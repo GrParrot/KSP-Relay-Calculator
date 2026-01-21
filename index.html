@@ -46,7 +46,7 @@
 
         .preset-group {
             display: flex;
-            gap: 8px;
+            gap: 10px;
             margin-bottom: 20px;
             justify-content: center;
             flex-wrap: wrap;
@@ -56,10 +56,10 @@
             background: #3a3a42;
             border: 1px solid #555;
             color: #fff;
-            padding: 5px 12px;
+            padding: 5px 15px;
             cursor: pointer;
             border-radius: 20px;
-            font-size: 0.85em;
+            font-size: 0.9em;
             transition: 0.2s;
         }
 
@@ -91,7 +91,19 @@
             font-weight: bold;
         }
 
-        input[type="number"].std-input {
+        input[type="number"].std-input, select {
+            appearance: textfield;
+            width: 100%;
+            padding: 10px;
+            background-color: #141417;
+            border: 1px solid #444;
+            color: white;
+            border-radius: var(--border-radius);
+            box-sizing: border-box;
+            font-size: 1em;
+        }
+        
+        input[type="number"].inc-group {
             width: 100%;
             padding: 10px;
             background-color: #141417;
@@ -133,6 +145,17 @@
             margin-top: 4px;
         }
 
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .info-small {
+            font-size: 0.8em;
+            color: #777;
+            margin-top: 3px;
+        }
+
         button.calculate-btn {
             width: 100%;
             padding: 12px;
@@ -144,6 +167,11 @@
             cursor: pointer;
             border-radius: var(--border-radius);
             margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        button.calculate-btn:hover {
+            background-color: var(--accent-hover);
         }
 
         #results {
@@ -160,6 +188,10 @@
             padding-bottom: 5px;
             border-bottom: 1px solid #3a3a42;
             align-items: baseline;
+        }
+
+        .result-label {
+            color: #bbb;
         }
 
         .result-value {
@@ -196,11 +228,13 @@
             margin-top: 20px;
             text-align: center;
             display: none;
+            font-size: 0.9em;
         }
 
         .viz-container {
             margin-top: 30px;
             display: flex;
+            justify-content: center;
             flex-direction: column;
             align-items: center;
         }
@@ -209,6 +243,21 @@
             border-radius: 50%;
             border: 2px solid #444;
             max-width: 100%;
+            height: auto;
+        }
+        .legend {
+            margin-top: 10px;
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+            color: #aaa;
+        }
+        .dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
         }
     </style>
 </head>
@@ -235,8 +284,8 @@
     </div>
 
     <div class="input-group">
-        <label>Body GM (m³/s²)</label>
-        <input type="number" id="gm" class="std-input" oninput="updateMinPeriod()">
+        <label>Body Gravitational Parameter (GM)<span class="info-small">(m³/s²)</span></label>
+        <input type="number" id="gm" class="std-input"  placeholder="e.g. 3.5316e12 for Kerbin" oninput="updateMinPeriod()">
     </div>
 
     <div class="input-group">
@@ -250,49 +299,92 @@
     </div>
 
     <div class="input-group">
-        <label>Number of Satellites</label>
-        <input type="number" id="satCount" class="std-input" value="3" min="2" oninput="updateMinPeriod()">
+        <label>Number of Satellites</label><span class="info-small"> min. 3 for a self-sufficient network</span>
+        <input type="number" id="satCount" class="inc-group" value="3" min="2" oninput="updateMinPeriod()">
+    </div>
+
+    <div class="input-group">
+        <label><input type="checkbox" id="preferInner">  Prefer inner transfer orbit</label>
     </div>
 
     <div class="input-group">
         <div class="label-header">
-            <label>Desired Orbital Period</label>
+            <label>Desired Orbital Period</label> <span class="info-small"> Tip: Higher = less drift, Lower = higher signal srength</span>
             <span id="min-period-display" class="min-period-badge">Min Period: --</span>
         </div>
         <div class="time-inputs">
-            <div class="time-field"><input type="number" id="t_d" placeholder="0"><span>Days</span></div>
-            <div class="time-field"><input type="number" id="t_h" placeholder="0"><span>Hours</span></div>
-            <div class="time-field"><input type="number" id="t_m" placeholder="0"><span>Mins</span></div>
-            <div class="time-field"><input type="number" id="t_s" placeholder="0"><span>Secs</span></div>
+            <div class="time-field">
+                <input type="number" id="t_d" placeholder="0" min="0">
+                <span>Days (6h)</span>
+            </div>
+            <div class="time-field">
+                <input type="number" id="t_h" placeholder="0" min="0" max="23">
+                <span>Hours</span>
+            </div>
+            <div class="time-field">
+                <input type="number" id="t_m" placeholder="0" min="0" max="59">
+                <span>Mins</span>
+            </div>
+            <div class="time-field">
+                <input type="number" id="t_s" placeholder="0" min="0" max="59">
+                <span>Secs</span>
+            </div>
         </div>
     </div>
 
     <button class="calculate-btn" onclick="calculate()">Calculate Formation</button>
 
     <div id="results">
-        <h3>Target Relay Orbit</h3>
-        <div class="result-row"><span class="result-label">Altitude</span><span class="result-value" id="res-alt">0 m</span></div>
+        <h3>Target Relay Orbit (Circular)</h3>
+        <div class="result-row">
+            <span class="result-label">Altitude</span>
+            <span class="result-value" id="res-alt">0 m</span>
+        </div>
         <div class="result-row">
             <span class="result-label">Orbital Period</span>
             <div class="result-value">
                 <span id="res-target-period-fmt">0s</span>
                 <span class="sub-value" id="res-target-period-raw"></span>
+            </div>
         </div>
-        
-        <div class="result-row"><span class="result-label">Velocity</span><span class="result-value" id="res-vel">0 m/s</span></div>
+        <div class="result-row">
+            <span class="result-label">Orbital Velocity</span>
+            <span class="result-value" id="res-vel">0 m/s</span>
+        </div>
 
         <h3>Resonant Transfer Orbit</h3>
         <div id="res-orbit-type" class="info-small" style="color: var(--accent); margin-bottom: 5px;"></div>
-        <div class="result-row"><span class="result-label">Apoapsis Altitude</span><span class="result-value" id="res-trans-ap">0 m</span></div>
-        <div class="result-row"><span class="result-label">Periapsis Altitude</span><span class="result-value" id="res-trans-pe">0 m</span></div>
-        <div class="result-row"><span class="result-label">Period</span><span class="result-value" id="res-trans-period-fmt">0s</span></div>
-        <div class="result-row"><span class="result-label">Insertion Δv</span><span class="result-value" id="res-dv">0 m/s</span></div>
+        </div>
+        <div class="result-row">
+            <span class="result-label">Apoapsis Altitude</span>
+            <span class="result-value" id="res-trans-ap">0 m</span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">Periapsis Altitude</span>
+            <span class="result-value" id="res-trans-pe">0 m</span>
+        </div>
+        <div class="result-row">
+            <span class="result-label">Orbital Period</span>
+            <div class="result-value">
+                <span id="res-trans-period-fmt">0s</span>
+                <span class="sub-value" id="res-trans-period-raw"></span>
+            </div>
+        </div>
+        <div class="result-row">
+            <span class="result-label">Insertion Δv</span>
+            <span class="result-value" id="res-dv">0 m/s</span>
+        </div>
 
         <div id="warning-msg" class="warning-box"></div>
-        <div id="success-msg" class="success-box">✔ Network clears terrain and atmosphere</div>
+        <div id="success-msg" class="success-box">✔ Network clears terrain/atmosphere</div>
 
         <div class="viz-container">
             <canvas id="orbitViz" width="400" height="400"></canvas>
+            <div class="legend">
+                <span><span class="dot" style="background:#888;"></span>Body</span>
+                <span><span class="dot" style="background:#6bff8e;"></span>Link (Clear)</span>
+                <span><span class="dot" style="background:#ff6b6b;"></span>Link (Blocked)</span>
+            </div>
         </div>
     </div>
 </div>
@@ -325,131 +417,168 @@
     function updateMinPeriod() {
         const gm = parseFloat(document.getElementById('gm').value);
         const R_body = parseFloat(document.getElementById('radius').value);
-        const A_body = parseFloat(document.getElementById('atmo').value) || 0;
+        const A_body = parseFloat(document.getElementById('atmo').value);
         const N = parseInt(document.getElementById('satCount').value);
         const display = document.getElementById('min-period-display');
 
-        if (!gm || !R_body || !N || N < 2) return;
+        if (!gm || !R_body || !N ) {
+            display.innerText = "Min Period: --";
+            return;
+        }
+
+        if(N < 3){
+            const minPeriodSec = 2 * Math.PI * Math.sqrt(Math.pow(R_body+A_body, 3) / gm);
+            display.innerText = "Min Period: " + formatDuration(minPeriodSec);
+            return;
+        }
 
         const theta = (Math.PI * 2) / N;
-        const minRadiusLOS = R_body / Math.cos(theta / 2);
-        // Minimum orbit must clear terrain LOS AND atmosphere height
-        const minRadiusSafe = Math.max(minRadiusLOS, R_body + A_body + 1000); 
-        const minPeriodSec = 2 * Math.PI * Math.sqrt(Math.pow(minRadiusSafe, 3) / gm);
+        // Minimum orbit radius to clear the planet
+        var minRadius = (R_body) / Math.cos(theta / 2);
+        if(minRadius < (R_body + A_body)){
+           minRadius = (R_body + A_body);
+        }
+        // Kepler's 3rd Law for period
+        const minPeriodSec = 2 * Math.PI * Math.sqrt(Math.pow(minRadius, 3) / gm);
         
         display.innerText = "Min Period: " + formatDuration(minPeriodSec);
     }
 
     function getPeriodInput() {
-        return (parseFloat(document.getElementById('t_d').value) || 0) * 21600 +
-               (parseFloat(document.getElementById('t_h').value) || 0) * 3600 +
-               (parseFloat(document.getElementById('t_m').value) || 0) * 60 +
-               (parseFloat(document.getElementById('t_s').value) || 0);
+        const d = parseFloat(document.getElementById('t_d').value) || 0;
+        const h = parseFloat(document.getElementById('t_h').value) || 0;
+        const m = parseFloat(document.getElementById('t_m').value) || 0;
+        const s = parseFloat(document.getElementById('t_s').value) || 0;
+        return (d * 21600) + (h * 3600) + (m * 60) + s;
     }
 
-    function formatDuration(s) {
-        s = Math.round(s);
-        const d = Math.floor(s / 21600); s %= 21600;
-        const h = Math.floor(s / 3600); s %= 3600;
-        const m = Math.floor(s / 60); s %= 60;
-        return (d > 0 ? d + "d " : "") + (h > 0 ? h + "h " : "") + (m > 0 ? m + "m " : "") + s + "s";
+    function formatDuration(totalSeconds) {
+        totalSeconds = Math.round(totalSeconds);
+        const dayLen = 21600; 
+        const d = Math.floor(totalSeconds / dayLen);
+        let rem = totalSeconds % dayLen;
+        const h = Math.floor(rem / 3600);
+        rem %= 3600;
+        const m = Math.floor(rem / 60);
+        const s = rem % 60;
+
+        let parts = [];
+        if (d > 0) parts.push(d + "d");
+        if (h > 0) parts.push(h + "h");
+        if (m > 0) parts.push(m + "m");
+        if (s > 0 || parts.length === 0) parts.push(s + "s");
+        return parts.join(" ");
+    }
+
+    function formatNumber(num) {
+        return num.toLocaleString('en-US', { maximumFractionDigits: 2 });
     }
 
     function calculate() {
+        updateMinPeriod();
         const gm = parseFloat(document.getElementById('gm').value);
         const R_body = parseFloat(document.getElementById('radius').value);
         const A_body = parseFloat(document.getElementById('atmo').value) || 0;
         const N = parseInt(document.getElementById('satCount').value);
-        const T_target = getPeriodInput();
+        const T_final = getPeriodInput();
 
-        if (!gm || !R_body || !T_target) return;
-
-        const a_target = Math.pow(gm * Math.pow(T_target / (2 * Math.PI), 2), 1/3);
-        const v_target = Math.sqrt(gm / a_target);
-
-        // Try Inner Resonant Orbit (Period = T * (N-1)/N)
-        let n_factor = (N - 1) / N;
-        let T_res = T_target * n_factor;
-        let a_res = Math.pow(gm * Math.pow(T_res / (2 * Math.PI), 2), 1/3);
-        let r_ap_res = a_target;
-        let r_pe_res = (2 * a_res) - r_ap_res;
-        let loopType = "Inner (Diving)";
-
-        // Check if Inner dips into atmosphere or hits ground
-        if (r_pe_res < (R_body + A_body)) {
-            // Force Outer Resonant Orbit (Period = T * (N+1)/N)
-            n_factor = (N + 1) / N;
-            T_res = T_target * n_factor;
-            a_res = Math.pow(gm * Math.pow(T_res / (2 * Math.PI), 2), 1/3);
-            r_pe_res = a_target;
-            r_ap_res = (2 * a_res) - r_pe_res;
-            loopType = "Outer (Climbing)";
+        if (!gm || !R_body || !N || !T_final) {
+            alert("Please fill in all fields.");
+            return;
         }
 
-        const dV = Math.abs(v_target - Math.sqrt(gm * (2/a_target - 1/a_res)));
-        const isBlocked = (a_target * Math.cos(Math.PI / N)) < R_body;
+        const PI = Math.PI;
+        const a_final = Math.pow(gm * Math.pow(T_final / (2 * PI), 2), 1/3);
+        const alt_final = a_final - R_body;
+        const v_final = Math.sqrt(gm / a_final);
+
+        let resonant_factor = (N - 1) / N;
+        let T_res = T_final * resonant_factor;
+        let a_res = Math.pow(gm * Math.pow(T_res / (2 * PI), 2), 1/3);
+        let r_ap_res = a_final;
+        let r_pe_res = (2 * a_res) - r_ap_res;
+        let type = "Inner (Diving)";
+
+        if (r_pe_res < (R_body+A_body) || !document.getElementById('preferInner').checked) {
+            type = "Outer (Climbing)";
+            resonant_factor = (N + 1) / N;
+            T_res = T_final * resonant_factor;
+            a_res = Math.pow(gm * Math.pow(T_res / (2 * PI), 2), 1/3);
+            r_pe_res = a_final;
+            r_ap_res = (2 * a_res) - r_pe_res;
+        }
+
+        const dV = Math.abs(v_final - Math.sqrt(gm * (2/a_final - 1/a_res)));
+        const theta = (2 * PI) / N;
+        const isBlocked = (a_final * Math.cos(theta / 2)) < R_body;
 
         document.getElementById('results').style.display = 'block';
-        document.getElementById('res-alt').innerText = Math.round(a_target - R_body).toLocaleString() + " m";
-        document.getElementById('res-vel').innerText = v_target.toFixed(2) + " m/s";
-        document.getElementById('orbit-type-note').innerText = "Loop Type: " + loopType;
-        document.getElementById('res-trans-ap').innerText = Math.round(r_ap_res - R_body).toLocaleString() + (loopType.includes("Inner") ? " (Release)" : " m");
-        document.getElementById('res-trans-pe').innerText = Math.round(r_pe_res - R_body).toLocaleString() + (loopType.includes("Outer") ? " (Release)" : " m");
+        document.getElementById('res-alt').innerText = formatNumber(alt_final) + " m";
+        document.getElementById('res-vel').innerText = formatNumber(v_final) + " m/s";
+        document.getElementById('res-target-period-fmt').innerText = formatDuration(T_final);
+        document.getElementById('res-target-period-raw').innerText = "(" + formatNumber(T_final) + " sec)";
+        document.getElementById('res-orbit-type').innerText ="Orbit type: "+ type;
+        document.getElementById('res-trans-ap').innerText = formatNumber(r_ap_res - R_body) + (type === "Inner" ? " (Deploy)" : " m");
+        document.getElementById('res-trans-pe').innerText = formatNumber(r_pe_res - R_body) + (type === "Outer" ? " (Deploy)" : " m");
         document.getElementById('res-trans-period-fmt').innerText = formatDuration(T_res);
-        document.getElementById('res-dv').innerText = dV.toFixed(2) + " m/s";
+        document.getElementById('res-trans-period-raw').innerText = "(" + formatNumber(T_res) + " sec)";
+        document.getElementById('res-dv').innerText = formatNumber(dV) + " m/s";
 
         document.getElementById('warning-msg').style.display = isBlocked ? 'block' : 'none';
         document.getElementById('success-msg').style.display = isBlocked ? 'none' : 'block';
-        if (isBlocked) document.getElementById('warning-msg').innerHTML = "<strong>Line-of-Sight Blocked!</strong> The planet blocks connection between satellites.";
+        if (isBlocked) document.getElementById('warning-msg').innerHTML = "<strong>WARNING: Signal Blocked!</strong>";
 
-        drawVisualizer(R_body, A_body, a_target, N, isBlocked);
+        drawVisualizer(R_body, a_final, N, isBlocked, A_body);
     }
 
-    function drawVisualizer(R, A, a_orb, N, blocked) {
+    function drawVisualizer(radiusBody, radiusOrbit, satCount, isBlocked, atmoHeight) {
         const canvas = document.getElementById('orbitViz');
         const ctx = canvas.getContext('2d');
-        const cx = 200, cy = 200;
-        const scale = 160 / a_orb;
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const scale = (canvas.width * 0.4) / radiusOrbit;
 
-        ctx.clearRect(0,0,400,400);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Atmo
-        if (A > 0) {
+        if (atmoHeight > 0) {
             ctx.beginPath();
-            ctx.arc(cx, cy, (R + A) * scale, 0, 2*Math.PI);
+            ctx.arc(cx, cy, (radiusBody + atmoHeight) * scale, 0, 2*Math.PI);
             ctx.fillStyle = 'rgba(102, 205, 170, 0.2)';
             ctx.fill();
         }
 
-        // Body
         ctx.beginPath();
-        ctx.arc(cx, cy, R * scale, 0, 2*Math.PI);
-        ctx.fillStyle = '#555';
+        ctx.arc(cx, cy, radiusBody * scale, 0, 2 * Math.PI);
+        ctx.fillStyle = '#888';
         ctx.fill();
 
-        // Orbit
         ctx.beginPath();
-        ctx.arc(cx, cy, a_orb * scale, 0, 2*Math.PI);
+        ctx.arc(cx, cy, radiusOrbit * scale, 0, 2 * Math.PI);
         ctx.strokeStyle = '#444';
-        ctx.setLineDash([5,5]);
+        ctx.setLineDash([5, 5]);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Sats & Links
-        const pts = [];
-        for(let i=0; i<N; i++) {
-            let ang = (i * 2 * Math.PI / N) - Math.PI/2;
-            pts.push({x: cx + Math.cos(ang)*a_orb*scale, y: cy + Math.sin(ang)*a_orb*scale});
+        const pos = [];
+        for (let i = 0; i < satCount; i++) {
+            const angle = (Math.PI * 2 * i / satCount) - (Math.PI / 2);
+            pos.push({x: cx + Math.cos(angle) * radiusOrbit * scale, y: cy + Math.sin(angle) * radiusOrbit * scale});
         }
+
         ctx.beginPath();
-        ctx.strokeStyle = blocked ? '#ff6b6b' : '#6bff8e';
-        for(let i=0; i<N; i++) {
-            ctx.moveTo(pts[i].x, pts[i].y);
-            ctx.lineTo(pts[(i+1)%N].x, pts[(i+1)%N].y);
+        ctx.strokeStyle = isBlocked ? '#ff6b6b' : '#6bff8e';
+        for (let i = 0; i < satCount; i++) {
+            ctx.moveTo(pos[i].x, pos[i].y);
+            ctx.lineTo(pos[(i+1)%satCount].x, pos[(i+1)%satCount].y);
         }
         ctx.stroke();
+
         ctx.fillStyle = '#fff';
-        pts.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, 7); ctx.fill(); });
+        for (let p of pos) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+            ctx.fill();
+        }
     }
 </script>
 </body>
